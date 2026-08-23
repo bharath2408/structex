@@ -499,17 +499,32 @@ Routes, methods, and path parameters are derived automatically from your
 decorators — `/tasks/:id` becomes `/tasks/{id}` with no extra work. Add
 `@ApiDoc` where you want richer descriptions:
 
+Add `@ApiDoc` to `TasksController`:
+
 ```ts
-import { ApiDoc, Controller, Get, Param } from "@bharath2408/structex";
-import { toOpenApi } from "@bharath2408/structex/openapi";
+// src/tasks/tasks.controller.ts
+import { ApiDoc, /* ...your existing imports */ } from "@bharath2408/structex";
 
 @Controller("/tasks")
 @ApiDoc({ tags: ["Tasks"] })
-class TasksController {
+export class TasksController {
+  // ...
+
   @Get("/:id")
   @ApiDoc({ summary: "Fetch a task", responses: { "200": { description: "ok" } } })
-  findOne(@Param("id") id: string) {}
+  findOne(@Param("id") id: string) {
+    return this.tasks.find(id);
+  }
 }
+```
+
+Then generate the spec in `main.ts`, using the same `app` and `AppModule`
+already declared there:
+
+```ts
+// src/main.ts — add these two lines after `printRoutes(application.routes);`
+import { toOpenApi } from "@bharath2408/structex/openapi";
+import { TasksController } from "./tasks/tasks.controller.js";
 
 const spec = toOpenApi([TasksController], {
   info: { title: "Tasks API", version: "1.0.0" },
