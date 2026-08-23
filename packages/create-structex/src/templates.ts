@@ -135,7 +135,43 @@ printRoutes(routes);
 app.use(errorHandler);
 
 const port = Number(process.env.PORT ?? 3000);
-app.listen(port, () => console.log(\`\\nlistening on http://localhost:\${port}\`));
+const server = app.listen(port, () =>
+  console.log(\`\\nlistening on http://localhost:\${port}\`),
+);
+
+// A crash mid-request should still close cleanly rather than hang forever
+// or keep serving requests in a broken state.
+process.on("uncaughtException", (err) => {
+  console.error("uncaught exception:", err);
+  shutdown(1);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("unhandled rejection:", err);
+  shutdown(1);
+});
+
+let shuttingDown = false;
+
+function shutdown(code: number): void {
+  // A second signal means the graceful path is stuck — exit immediately
+  // rather than leave the process unkillable.
+  if (shuttingDown) process.exit(code);
+  shuttingDown = true;
+
+  const forceExit = setTimeout(() => {
+    console.error("shutdown timed out after 10s, forcing exit");
+    process.exit(1);
+  }, 10_000).unref();
+
+  server.close(() => {
+    clearTimeout(forceExit);
+    process.exit(code);
+  });
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => shutdown(0));
+}
 `;
 
 const MINIMAL_HEALTH = `import { Controller, Get } from "@bharath2408/structex";
@@ -280,12 +316,40 @@ const server = app.listen(port, () =>
   console.log(\`\\nlistening on http://localhost:\${port}\`),
 );
 
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    server.close(() => {
-      void application.close().then(() => process.exit(0));
+// A crash mid-request should still close cleanly rather than hang forever
+// or keep serving requests in a broken state.
+process.on("uncaughtException", (err) => {
+  console.error("uncaught exception:", err);
+  shutdown(1);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("unhandled rejection:", err);
+  shutdown(1);
+});
+
+let shuttingDown = false;
+
+function shutdown(code: number): void {
+  // A second signal means the graceful path is stuck — exit immediately
+  // rather than leave the process unkillable.
+  if (shuttingDown) process.exit(code);
+  shuttingDown = true;
+
+  const forceExit = setTimeout(() => {
+    console.error("shutdown timed out after 10s, forcing exit");
+    process.exit(1);
+  }, 10_000).unref();
+
+  server.close(() => {
+    void application.close().then(() => {
+      clearTimeout(forceExit);
+      process.exit(code);
     });
   });
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => shutdown(0));
 }
 `;
 

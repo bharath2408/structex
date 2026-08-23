@@ -32,6 +32,14 @@ export interface FieldRule {
 
 const rules = new WeakMap<Function, Map<string, FieldRule>>();
 
+/**
+ * True once any `@Exclude`/`@Expose`/`@Transform` decorator has run,
+ * anywhere in the process. Lets `serialize()` short-circuit to a true no-op
+ * for apps that never use these decorators, instead of deep-cloning every
+ * response body on every request just to find nothing to do.
+ */
+let hasAnyRules = false;
+
 function rulesFor(target: Function): Map<string, FieldRule> {
   let map = rules.get(target);
   if (!map) {
@@ -71,6 +79,7 @@ function updateRule(
   const map = rulesFor(ctor);
   const key = String(propertyKey);
   map.set(key, { exclude: false, ...map.get(key), ...patch });
+  hasAnyRules = true;
 }
 
 export { assertLegacyDecorators };
@@ -160,6 +169,7 @@ export function serialize(
   context: SerializeContext = { groups: [] },
   seen: WeakSet<object> = new WeakSet(),
 ): unknown {
+  if (!hasAnyRules) return value;
   if (value === null || typeof value !== "object") return value;
 
   if (seen.has(value)) return undefined; // cycle

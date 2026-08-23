@@ -1,6 +1,6 @@
 {
   "name": "@bharath2408/create-structex",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },

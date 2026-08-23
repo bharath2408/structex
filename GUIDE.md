@@ -104,12 +104,40 @@ const server = app.listen(port, () =>
   console.log(`\nlistening on http://localhost:${port}`),
 );
 
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    server.close(() => {
-      void application.close().then(() => process.exit(0));
+// A crash mid-request should still close cleanly rather than hang forever
+// or keep serving requests in a broken state.
+process.on("uncaughtException", (err) => {
+  console.error("uncaught exception:", err);
+  shutdown(1);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("unhandled rejection:", err);
+  shutdown(1);
+});
+
+let shuttingDown = false;
+
+function shutdown(code: number): void {
+  // A second signal means the graceful path is stuck — exit immediately
+  // rather than leave the process unkillable.
+  if (shuttingDown) process.exit(code);
+  shuttingDown = true;
+
+  const forceExit = setTimeout(() => {
+    console.error("shutdown timed out after 10s, forcing exit");
+    process.exit(1);
+  }, 10_000).unref();
+
+  server.close(() => {
+    void application.close().then(() => {
+      clearTimeout(forceExit);
+      process.exit(code);
     });
   });
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => shutdown(0));
 }
 ```
 
@@ -124,10 +152,22 @@ GET     /api/users   →  UsersController.list
 ...
 ```
 
-The graceful-shutdown loop at the bottom matters once you have real
-resources (database pools, message consumers) wired up as providers —
-`application.close()` runs each module's cleanup hook before the process
-exits.
+The shutdown logic at the bottom matters once you have real resources
+(database pools, message consumers) wired up as providers:
+
+- `application.close()` runs each module's cleanup hook before the process
+  exits — the actual reason to prefer this over a bare `process.exit()`.
+- A **10-second watchdog** force-exits if `server.close()` or
+  `application.close()` hangs (e.g. a connection that never drains) —
+  without it, a stuck shutdown never releases the port, which looks like a
+  frozen deploy to whatever's orchestrating it.
+- A **second SIGINT/SIGTERM** exits immediately rather than queuing up
+  behind an already-stuck graceful path — the difference between one
+  `Ctrl+C` and a process you have to `kill -9`.
+- `uncaughtException`/`unhandledRejection` route through the same shutdown
+  path with exit code `1`, so a genuine bug crashes loudly and cleanly
+  instead of leaving the process silently serving requests in a broken
+  state.
 
 ## 4. Build a feature: Tasks
 
