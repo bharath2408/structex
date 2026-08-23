@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [18, 20, 22]
+        node: [20, 22]
         express: ["^4.21.0", "^5.1.0"]
     steps:
       - uses: actions/checkout@v4
