@@ -61,7 +61,6 @@ jobs:
             node $GITHUB_WORKSPACE/packages/create-structex/dist/index.js app \
               --template $template --no-install --no-git
             cd app
-            npm install
             npm install /tmp/structex-*.tgz
             npx tsc --noEmit
             npm test
