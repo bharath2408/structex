@@ -8,6 +8,8 @@ npx @bharath2408/create-structex my-api
 
 Published on GitHub Packages — add `@bharath2408:registry=https://npm.pkg.github.com` to your `.npmrc` and authenticate with a GitHub token (`read:packages` scope) before installing.
 
+**New here?** [**Read the guide**](GUIDE.md) — a full walkthrough from `npx create-structex` to a tested, validated, guarded feature, with every command and response verified.
+
 | Package | Description |
 |---|---|
 | [`@bharath2408/structex`](packages/structex) | The library. Controllers, DI, modules, interceptors, SSE, OpenAPI. Zero runtime dependencies. |
