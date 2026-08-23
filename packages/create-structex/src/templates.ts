@@ -37,7 +37,7 @@ function packageJson({ name, structexVersion }: ScaffoldOptions): string {
         supertest: "^7.1.4",
         tsx: "^4.19.2",
         typescript: "^5.9.2",
-        vitest: "^2.1.9",
+        vitest: "^4.1.11",
       },
     },
     null,

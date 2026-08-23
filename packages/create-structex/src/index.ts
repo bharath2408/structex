@@ -30,7 +30,7 @@ import {
   yellow,
 } from "./util.js";
 
-const VERSION = "0.5.2";
+const VERSION = "0.5.3";
 /** Kept in step with the CLI's own major.minor. */
 const STRUCTEX_VERSION = "^0.5.0";
 
