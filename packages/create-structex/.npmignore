@@ -1,0 +1,12 @@
+src
+test
+tests
+*.test.ts
+*.spec.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+vitest.config.ts
+tsup.config.ts
+coverage
+.turbo
+node_modules
