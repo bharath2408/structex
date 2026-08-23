@@ -1,0 +1,19 @@
+{
+  "name": "structex-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w structex && npm run build -w create-structex",
+    "typecheck": "npm run typecheck -w structex && npm run typecheck -w create-structex",
+    "test": "npm run test -w structex && npm run test -w create-structex",
+    "verify": "npm run typecheck && npm run test && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}

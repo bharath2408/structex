@@ -1,0 +1,95 @@
+{
+  "name": "structex",
+  "version": "0.5.0",
+  "description": "Structure for Express. Decorators, DI, and modules — without leaving Express behind. Zero runtime dependencies.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./di": {
+      "types": "./dist/di.d.ts",
+      "import": "./dist/di.js",
+      "require": "./dist/di.cjs"
+    },
+    "./pipes": {
+      "types": "./dist/pipes.d.ts",
+      "import": "./dist/pipes.js",
+      "require": "./dist/pipes.cjs"
+    },
+    "./interceptors": {
+      "types": "./dist/interceptors.d.ts",
+      "import": "./dist/interceptors.js",
+      "require": "./dist/interceptors.cjs"
+    },
+    "./openapi": {
+      "types": "./dist/openapi.d.ts",
+      "import": "./dist/openapi.js",
+      "require": "./dist/openapi.cjs"
+    },
+    "./serialization": {
+      "types": "./dist/serialization.d.ts",
+      "import": "./dist/serialization.js",
+      "require": "./dist/serialization.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && node scripts/build-subpaths.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "peerDependencies": {
+    "express": "^4.18.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.2",
+    "express": "^5.1.0",
+    "supertest": "^7.1.4",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.11"
+  },
+  "keywords": [
+    "express",
+    "typescript",
+    "decorators",
+    "controller",
+    "routing",
+    "dependency-injection",
+    "ioc",
+    "modules",
+    "rest",
+    "api"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-user/structex.git",
+    "directory": "packages/structex"
+  },
+  "homepage": "https://github.com/your-user/structex#readme"
+}

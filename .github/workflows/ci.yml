@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  library:
+    name: structex (node ${{ matrix.node }}, express ${{ matrix.express }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+        express: ["^4.21.0", "^5.1.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save -w structex express@${{ matrix.express }}
+      - run: npm run typecheck -w structex
+      - run: npm test -w structex
+      - run: npm run build -w structex
+
+  cli:
+    name: create-structex
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w create-structex
+      - run: npm test -w create-structex
+      - run: npm run build -w create-structex
+
+  e2e:
+    name: scaffold and run a generated project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: pack the library
+        run: npm pack -w structex --pack-destination /tmp
+      - name: scaffold both templates and run their tests
+        run: |
+          for template in minimal modules; do
+            rm -rf /tmp/e2e-$template && mkdir -p /tmp/e2e-$template
+            cd /tmp/e2e-$template
+            node $GITHUB_WORKSPACE/packages/create-structex/dist/index.js app \
+              --template $template --no-install --no-git
+            cd app
+            npm install
+            npm install /tmp/structex-*.tgz
+            npx tsc --noEmit
+            npm test
+          done
