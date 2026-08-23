@@ -233,6 +233,58 @@ describe("interceptors", () => {
     expect(second.body).toEqual({ calls: 1 });
   });
 
+  it("shares one in-flight call across concurrent requests for a cold key", async () => {
+    let calls = 0;
+
+    @Controller("/cache-concurrent")
+    class ConcurrentController {
+      @Get("/x")
+      @UseInterceptors(cache({ ttl: 10_000 }))
+      async x() {
+        calls++;
+        await new Promise((r) => setTimeout(r, 20));
+        return { calls };
+      }
+    }
+
+    const { app } = build([ConcurrentController]);
+    const [a, b, c] = await Promise.all([
+      request(app).get("/cache-concurrent/x"),
+      request(app).get("/cache-concurrent/x"),
+      request(app).get("/cache-concurrent/x"),
+    ]);
+
+    // All three arrived before the first call resolved, so the handler
+    // should have run exactly once, not three times.
+    expect(calls).toBe(1);
+    expect(a.body).toEqual({ calls: 1 });
+    expect(b.body).toEqual({ calls: 1 });
+    expect(c.body).toEqual({ calls: 1 });
+  });
+
+  it("does not cache a rejection — the next call retries", async () => {
+    let calls = 0;
+
+    @Controller("/cache-flaky")
+    class CacheFlakyController {
+      @Get("/x")
+      @UseInterceptors(cache({ ttl: 10_000 }))
+      x() {
+        calls++;
+        if (calls === 1) throw new Error("transient");
+        return { calls };
+      }
+    }
+
+    const { app } = build([CacheFlakyController]);
+    const first = await request(app).get("/cache-flaky/x");
+    const second = await request(app).get("/cache-flaky/x");
+
+    expect(first.status).toBe(500);
+    expect(second.status).toBe(200);
+    expect(second.body).toEqual({ calls: 2 });
+  });
+
   it("fails a slow handler with the timeout status", async () => {
     const { app } = build([new InterceptedController()]);
     const res = await request(app).get("/intercepted/slow");

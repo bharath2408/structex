@@ -66,7 +66,7 @@ export function cache(options: CacheOptions): Interceptor {
     key = (ctx) => `${ctx.method}:${ctx.req.originalUrl}`,
   } = options;
 
-  const entries = new Map<string, { value: unknown; expires: number }>();
+  const entries = new Map<string, { promise: Promise<unknown>; expires: number }>();
 
   return async (ctx, next) => {
     const cacheKey = key(ctx);
@@ -75,20 +75,31 @@ export function cache(options: CacheOptions): Interceptor {
     if (hit && hit.expires > Date.now()) {
       entries.delete(cacheKey);
       entries.set(cacheKey, hit); // refresh LRU position
-      return hit.value;
+      return hit.promise;
     }
     if (hit) entries.delete(cacheKey);
 
-    const value = await next();
-    entries.set(cacheKey, { value, expires: Date.now() + ttl });
+    // Cache the in-flight promise before awaiting it, so a burst of
+    // concurrent requests for the same cold key share one call to `next()`
+    // instead of each independently re-running the handler.
+    const promise = next();
+    const entry = { promise, expires: Date.now() + ttl };
+    entries.set(cacheKey, entry);
 
-    while (entries.size > max) {
-      const oldest = entries.keys().next().value;
-      if (oldest === undefined) break;
-      entries.delete(oldest);
+    try {
+      return await promise;
+    } catch (err) {
+      // A failure isn't cached — the next call should retry, not replay
+      // the same rejection until the TTL runs out.
+      if (entries.get(cacheKey) === entry) entries.delete(cacheKey);
+      throw err;
+    } finally {
+      while (entries.size > max) {
+        const oldest = entries.keys().next().value;
+        if (oldest === undefined) break;
+        entries.delete(oldest);
+      }
     }
-
-    return value;
   };
 }
 
