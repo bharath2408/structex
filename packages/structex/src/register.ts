@@ -451,6 +451,27 @@ export function listRoutes(
   return routes;
 }
 
+const METHOD_COLORS: Record<string, string> = {
+  GET: "36",
+  POST: "32",
+  PUT: "33",
+  PATCH: "33",
+  DELETE: "31",
+  OPTIONS: "90",
+  HEAD: "90",
+};
+
+function supportsColor(): boolean {
+  return (
+    !process.env.NO_COLOR &&
+    (process.stdout.isTTY === true || Boolean(process.env.FORCE_COLOR))
+  );
+}
+
+function paint(code: string, text: string): string {
+  return supportsColor() ? `\u001b[${code}m${text}\u001b[0m` : text;
+}
+
 /** Logs a route table. Handy as a boot-time sanity check. */
 export function printRoutes(
   routes: RouteInfo[],
@@ -462,9 +483,12 @@ export function printRoutes(
   }
   const width = Math.max(...routes.map((r) => r.method.length));
   for (const route of routes) {
+    const method = route.method.toUpperCase().padEnd(width);
+    const color = METHOD_COLORS[route.method.toUpperCase()] ?? "37";
     log(
-      `${route.method.toUpperCase().padEnd(width)}  ${route.path}  →  ` +
-        `${route.controller}.${route.handler}${route.sse ? "  [sse]" : ""}`,
+      `${paint(color, method)}  ${paint("1", route.path)}  ${paint("2", "→")}  ` +
+        `${paint("2", `${route.controller}.${route.handler}`)}` +
+        `${route.sse ? `  ${paint("35", "[sse]")}` : ""}`,
     );
   }
 }
