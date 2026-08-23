@@ -21,14 +21,17 @@ import {
   envelope,
   formatSseEvent,
   listRoutes,
+  rateLimit,
   registerControllers,
   respond,
   retry,
   scoped,
   timeout,
   timing,
+  swaggerUiHtml,
   toOpenApi,
   toOpenApiPath,
+  Version,
   type ExecutionContext,
   type Interceptor,
   type SseEvent,
@@ -753,5 +756,207 @@ describe("toOpenApi", () => {
   it("includes info and version", () => {
     expect(spec.openapi).toBe("3.1.0");
     expect(spec.info).toEqual({ title: "Test API", version: "1.0.0" });
+  });
+});
+
+describe("swaggerUiHtml", () => {
+  it("embeds the spec URL when passed as a bare string", () => {
+    const html = swaggerUiHtml("/openapi.json");
+    expect(html).toContain('url: "/openapi.json"');
+    expect(html).toContain("<title>API Docs</title>");
+  });
+
+  it("accepts an options object with a custom title", () => {
+    const html = swaggerUiHtml({ specUrl: "/api/spec.json", title: "My API" });
+    expect(html).toContain('url: "/api/spec.json"');
+    expect(html).toContain("<title>My API</title>");
+  });
+
+  it("escapes HTML in the title", () => {
+    const html = swaggerUiHtml({
+      specUrl: "/openapi.json",
+      title: "<script>alert(1)</script>",
+    });
+    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("JSON-encodes the spec URL, so it cannot break out of the script context", () => {
+    const html = swaggerUiHtml({ specUrl: '"; alert(1); "' });
+    expect(html).toContain(JSON.stringify('"; alert(1); "'));
+  });
+
+  it("references the swagger-ui-dist CDN bundle, not a bundled dependency", () => {
+    const html = swaggerUiHtml("/openapi.json");
+    expect(html).toContain("swagger-ui-dist");
+    expect(html).toContain('<div id="swagger-ui"></div>');
+  });
+});
+
+describe("rateLimit", () => {
+  // Each test builds its own controller so `rateLimit()`'s closure (and its
+  // `hits` map) is fresh — the decorator runs once at class-definition time,
+  // so sharing a controller across tests would leak state between them.
+
+  it("allows up to the limit, then rejects with 429", async () => {
+    @Controller("/limited")
+    class LimitedController {
+      @Get("/x")
+      @UseInterceptors(rateLimit({ limit: 2, windowMs: 10_000 }))
+      x() {
+        return { ok: true };
+      }
+    }
+
+    const app = express();
+    registerControllers(app, [LimitedController]);
+
+    const first = await request(app).get("/limited/x");
+    const second = await request(app).get("/limited/x");
+    const third = await request(app).get("/limited/x");
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(third.status).toBe(429);
+    expect(third.headers["retry-after"]).toBeDefined();
+  });
+
+  it("sets RateLimit-Remaining, counting down to zero", async () => {
+    @Controller("/limited")
+    class LimitedController {
+      @Get("/x")
+      @UseInterceptors(rateLimit({ limit: 2, windowMs: 10_000 }))
+      x() {
+        return { ok: true };
+      }
+    }
+
+    const app = express();
+    registerControllers(app, [LimitedController]);
+
+    const first = await request(app).get("/limited/x");
+    const second = await request(app).get("/limited/x");
+
+    expect(first.headers["ratelimit-remaining"]).toBe("1");
+    expect(second.headers["ratelimit-remaining"]).toBe("0");
+  });
+
+  it("resets after the window elapses", async () => {
+    @Controller("/limited")
+    class LimitedController {
+      @Get("/x")
+      @UseInterceptors(rateLimit({ limit: 2, windowMs: 100 }))
+      x() {
+        return { ok: true };
+      }
+    }
+
+    const app = express();
+    registerControllers(app, [LimitedController]);
+
+    await request(app).get("/limited/x");
+    await request(app).get("/limited/x");
+    expect((await request(app).get("/limited/x")).status).toBe(429);
+
+    await new Promise((r) => setTimeout(r, 120));
+
+    expect((await request(app).get("/limited/x")).status).toBe(200);
+  });
+
+  it("tracks separate keys independently", async () => {
+    @Controller("/limited-by-key")
+    class LimitedByKeyController {
+      @Get("/x")
+      @UseInterceptors(
+        rateLimit({
+          limit: 1,
+          windowMs: 10_000,
+          key: (ctx) => String(ctx.req.query.user ?? "anon"),
+        }),
+      )
+      x() {
+        return { ok: true };
+      }
+    }
+
+    const app = express();
+    registerControllers(app, [LimitedByKeyController]);
+
+    const alice1 = await request(app).get("/limited-by-key/x?user=alice");
+    const alice2 = await request(app).get("/limited-by-key/x?user=alice");
+    const bob1 = await request(app).get("/limited-by-key/x?user=bob");
+
+    expect(alice1.status).toBe(200);
+    expect(alice2.status).toBe(429); // alice's own second request, over her limit of 1
+    expect(bob1.status).toBe(200); // bob has his own, untouched budget
+  });
+});
+
+describe("@Version", () => {
+  @Controller("/widgets")
+  @Version("1")
+  class WidgetsController {
+    @Get("/")
+    list() {
+      return { items: [] };
+    }
+
+    @Get("/beta")
+    @Version("2")
+    beta() {
+      return { beta: true };
+    }
+  }
+
+  function build() {
+    const app = express();
+    registerControllers(app, [WidgetsController], { prefix: "/api" });
+    return app;
+  }
+
+  it("prefixes the controller's routes with v<version>", async () => {
+    const res = await request(build()).get("/api/v1/widgets");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ items: [] });
+  });
+
+  it("lets a method-level @Version override the controller's", async () => {
+    const res = await request(build()).get("/api/v2/widgets/beta");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ beta: true });
+  });
+
+  it("does not mount the versioned route under the unversioned path", async () => {
+    const res = await request(build()).get("/api/widgets");
+    expect(res.status).toBe(404);
+  });
+
+  it("supports a custom versionPrefix format", async () => {
+    const app = express();
+    registerControllers(app, [WidgetsController], {
+      prefix: "/api",
+      versionPrefix: (v) => `version${v}`,
+    });
+    const res = await request(app).get("/api/version1/widgets");
+    expect(res.status).toBe(200);
+  });
+
+  it("is reflected in listRoutes()", () => {
+    const routes = listRoutes([WidgetsController], { prefix: "/api" });
+    expect(routes.map((r) => r.path).sort()).toEqual([
+      "/api/v1/widgets",
+      "/api/v2/widgets/beta",
+    ]);
+  });
+
+  it("is reflected in toOpenApi()", () => {
+    const spec = toOpenApi([WidgetsController], {
+      info: { title: "Test", version: "1.0.0" },
+      prefix: "/api",
+    }) as any;
+    expect(Object.keys(spec.paths).sort()).toEqual([
+      "/api/v1/widgets",
+      "/api/v2/widgets/beta",
+    ]);
   });
 });

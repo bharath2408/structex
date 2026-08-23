@@ -76,13 +76,24 @@ const SUBPATHS = [
   },
   {
     name: "interceptors",
-    values: ["timing", "timeout", "cache", "retry", "envelope"],
-    types: ["Interceptor", "ExecutionContext", "CacheOptions", "RetryOptions"],
+    values: ["timing", "timeout", "cache", "rateLimit", "retry", "envelope"],
+    types: [
+      "Interceptor",
+      "ExecutionContext",
+      "CacheOptions",
+      "RateLimitOptions",
+      "RetryOptions",
+    ],
   },
   {
     name: "openapi",
-    values: ["toOpenApi", "toOpenApiPath"],
-    types: ["OpenApiInfo", "OpenApiOptions", "ApiDocDefinition"],
+    values: ["toOpenApi", "toOpenApiPath", "swaggerUiHtml"],
+    types: [
+      "OpenApiInfo",
+      "OpenApiOptions",
+      "ApiDocDefinition",
+      "SwaggerUiOptions",
+    ],
   },
   {
     name: "serialization",

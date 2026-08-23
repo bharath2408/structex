@@ -1,6 +1,6 @@
 {
   "name": "@bharath2408/structex",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
@@ -45,6 +45,11 @@
       "import": "./dist/testing.js",
       "require": "./dist/testing.cjs"
     },
+    "./websocket": {
+      "types": "./dist/websocket.d.ts",
+      "import": "./dist/websocket.js",
+      "require": "./dist/websocket.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -57,24 +62,32 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap && node scripts/build-subpaths.mjs",
+    "build": "tsup src/index.ts src/websocket.ts --format esm,cjs --dts --clean --sourcemap && node scripts/build-subpaths.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "peerDependencies": {
-    "express": "^4.18.0 || ^5.0.0"
+    "express": "^4.18.0 || ^5.0.0",
+    "ws": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ws": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.18.1",
     "express": "^5.1.0",
     "supertest": "^7.1.4",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "ws": "^8.21.3"
   },
   "keywords": [
     "express",

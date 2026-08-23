@@ -103,6 +103,81 @@ export function cache(options: CacheOptions): Interceptor {
   };
 }
 
+export interface RateLimitOptions {
+  /** Max requests allowed per key within `windowMs`. */
+  limit: number;
+  /** Window duration in milliseconds. */
+  windowMs: number;
+  /** Rate limit key. Defaults to the client IP. */
+  key?: (ctx: ExecutionContext) => string;
+  /** Distinct keys tracked before the least-recently-seen is evicted. Default 10 000. */
+  max?: number;
+  /** Message used in the 429 response. */
+  message?: string;
+}
+
+/**
+ * Rejects requests once a key exceeds `limit` calls within a sliding
+ * `windowMs`, with a 429 and standard `RateLimit-*` / `Retry-After` headers.
+ *
+ * Single-process only, like `cache()` — it does not coordinate across
+ * workers or instances. Put a shared store (e.g. Redis) in front of it for
+ * that; this is a per-instance limiter, not a distributed one.
+ */
+export function rateLimit(options: RateLimitOptions): Interceptor {
+  const {
+    limit,
+    windowMs,
+    key = (ctx) => ctx.req.ip ?? "unknown",
+    max = 10_000,
+    message = "Too Many Requests",
+  } = options;
+
+  const hits = new Map<string, number[]>();
+
+  return async (ctx, next) => {
+    const rateLimitKey = key(ctx);
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    // Re-inserting moves this key to the end of the map's iteration order,
+    // making the eviction below an approximate least-recently-seen policy.
+    const stored = hits.get(rateLimitKey);
+    hits.delete(rateLimitKey);
+    const timestamps = (stored ?? []).filter((t) => t > windowStart);
+    hits.set(rateLimitKey, timestamps);
+
+    const resetSeconds = Math.ceil(
+      (timestamps.length > 0 ? timestamps[0]! + windowMs - now : windowMs) / 1000,
+    );
+
+    if (timestamps.length >= limit) {
+      ctx.res.set({
+        "RateLimit-Limit": String(limit),
+        "RateLimit-Remaining": "0",
+        "RateLimit-Reset": String(resetSeconds),
+        "Retry-After": String(resetSeconds),
+      });
+      throw new HttpError(429, message);
+    }
+
+    timestamps.push(now);
+    ctx.res.set({
+      "RateLimit-Limit": String(limit),
+      "RateLimit-Remaining": String(Math.max(0, limit - timestamps.length)),
+      "RateLimit-Reset": String(resetSeconds),
+    });
+
+    while (hits.size > max) {
+      const oldest = hits.keys().next().value;
+      if (oldest === undefined) break;
+      hits.delete(oldest);
+    }
+
+    return next();
+  };
+}
+
 export interface RetryOptions {
   attempts: number;
   /** Delay before each retry, in milliseconds. Default 0. */

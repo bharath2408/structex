@@ -13,6 +13,7 @@ export {
   HttpCode,
   Header,
   Redirect,
+  Version,
   UseGuards,
   UseInterceptors,
   ApiDoc,
@@ -108,9 +109,11 @@ export {
   timing,
   timeout,
   cache,
+  rateLimit,
   retry,
   envelope,
   type CacheOptions,
+  type RateLimitOptions,
   type RetryOptions,
 } from "./interceptors.js";
 
@@ -118,8 +121,10 @@ export {
 export {
   toOpenApi,
   toOpenApiPath,
+  swaggerUiHtml,
   type OpenApiInfo,
   type OpenApiOptions,
+  type SwaggerUiOptions,
 } from "./openapi.js";
 
 /* Dependency injection */

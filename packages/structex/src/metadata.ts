@@ -98,6 +98,8 @@ export interface ControllerMeta {
   interceptors: Interceptor[];
   /** Default tags for every route, used by `toOpenApi`. */
   tags: string[];
+  /** Set by `@Version` on the class. A method's own `@Version` wins over this. */
+  version?: string;
   routes: RouteDefinition[];
   /** handlerName -> parameter definitions */
   params: Map<string, ParamDefinition[]>;
@@ -113,6 +115,8 @@ export interface ControllerMeta {
   redirects: Map<string, RedirectDefinition>;
   /** handlerName -> OpenAPI enrichment */
   apiDocs: Map<string, ApiDocDefinition>;
+  /** handlerName -> `@Version` override for that route only */
+  methodVersions: Map<string, string>;
 }
 
 const store = new WeakMap<Function, ControllerMeta>();
@@ -132,6 +136,7 @@ function emptyMeta(): ControllerMeta {
     headers: new Map(),
     redirects: new Map(),
     apiDocs: new Map(),
+    methodVersions: new Map(),
   };
 }
 
@@ -176,6 +181,7 @@ export function resolveMeta(target: Function): ControllerMeta | undefined {
     if (meta.prefix) merged.prefix = meta.prefix;
     if (meta.middleware.length) merged.middleware = meta.middleware;
     if (meta.tags.length) merged.tags = meta.tags;
+    if (meta.version !== undefined) merged.version = meta.version;
     merged.guards.push(...meta.guards);
     merged.interceptors.push(...meta.interceptors);
 
@@ -205,6 +211,9 @@ export function resolveMeta(target: Function): ControllerMeta | undefined {
       merged.headers.set(key, { ...(merged.headers.get(key) ?? {}), ...value });
     }
     for (const [key, value] of meta.redirects) merged.redirects.set(key, value);
+    for (const [key, value] of meta.methodVersions) {
+      merged.methodVersions.set(key, value);
+    }
     for (const [key, value] of meta.apiDocs) {
       merged.apiDocs.set(key, { ...(merged.apiDocs.get(key) ?? {}), ...value });
     }

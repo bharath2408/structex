@@ -29,11 +29,12 @@ npm install @bharath2408/structex express
 | `@bharath2408/structex/di` | `token`, `Inject`, `Container`, `defineModule`, `createApplication` |
 | `@bharath2408/structex/pipes` | `toInt`, `trim`, `required`, `parseWith`, … |
 | `@bharath2408/structex/interceptors` | `timing`, `timeout`, `cache`, `retry`, `envelope` |
-| `@bharath2408/structex/openapi` | `toOpenApi`, `toOpenApiPath` |
+| `@bharath2408/structex/openapi` | `toOpenApi`, `toOpenApiPath`, `swaggerUiHtml` |
 | `@bharath2408/structex/serialization` | `Exclude`, `Expose`, `Transform`, `serialize` |
 | `@bharath2408/structex/testing` | `createTestApp` |
+| `@bharath2408/structex/websocket` | `WebSocketGateway`, `SubscribeMessage`, `createWsApplication`, … (needs `ws`, see below) |
 
-Subpaths are curated subsets of the root export, not separate bundles — so there is exactly one metadata store no matter which paths you import from.
+Every subpath above `websocket` is a curated subset of the root export, not a separate bundle — so there is exactly one metadata store no matter which of them you import from. `websocket` is the one exception: it's an independent bundle with its own metadata store, so importing it never pulls `ws` into an app that doesn't use it.
 
 ## CLI
 
@@ -203,11 +204,21 @@ class ReportController {
 }
 ```
 
-Built in: `timing(log?)` · `timeout(ms, status?)` · `cache({ ttl, max?, key? })` · `retry({ attempts, delay?, shouldRetry? })` · `envelope(wrap?)`
+Built in: `timing(log?)` · `timeout(ms, status?)` · `cache({ ttl, max?, key? })` · `rateLimit({ limit, windowMs, key?, max? })` · `retry({ attempts, delay?, shouldRetry? })` · `envelope(wrap?)`
 
 **`next()` may be called more than once** — that is exactly how `retry` works. Each call re-runs parameter resolution and the handler, so anything under a re-invoking interceptor must be idempotent.
 
-Caveats worth knowing: `cache` is per-process and not shared across workers, so key it by user if the output varies per user. `timeout` rejects the response but cannot cancel the handler's work — use an `AbortSignal` for real cancellation. `retry` on a POST can create duplicates.
+Caveats worth knowing: `cache` and `rateLimit` are both per-process and not shared across workers — key them by user if the output/limit should vary per user, and put a shared store (e.g. Redis) in front for a multi-instance deployment. `timeout` rejects the response but cannot cancel the handler's work — use an `AbortSignal` for real cancellation. `retry` on a POST can create duplicates.
+
+```ts
+import { rateLimit } from "@bharath2408/structex/interceptors";
+
+@Post("/login")
+@UseInterceptors(rateLimit({ limit: 5, windowMs: 60_000 }))
+login(@Body() dto: LoginDto) { /* ... */ }
+```
+
+A rejected request gets a `429` plus `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` / `Retry-After` headers, matching the common `RateLimit-*` convention. `cache()` also coalesces concurrent requests for the same cold key into one call to the handler, rather than letting a burst of simultaneous requests all recompute independently.
 
 ---
 
@@ -228,6 +239,40 @@ class LiveController {
 ```
 
 Headers, framing, and stream teardown on client disconnect are handled for you. Return `undefined` and take `@Res()` if you want to write the stream yourself. Multi-line payloads are split across `data:` lines correctly.
+
+---
+
+## WebSockets
+
+SSE covers server-to-client push; for full duplex, `@bharath2408/structex/websocket` adds gateway-style routing over [`ws`](https://npm.im/ws). This is the one subpath that is **not** part of the main bundle — it's an independent module with its own metadata, so it never pulls `ws` into an app that doesn't use it. Install `ws` (and `@types/ws` if you reference `WebSocket`'s type) yourself; it's a peer dependency, same as `express`.
+
+```ts
+import {
+  WebSocketGateway,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  createWsApplication,
+} from "@bharath2408/structex/websocket";
+
+@WebSocketGateway("/ws/chat")
+class ChatGateway {
+  @SubscribeMessage("message")
+  onMessage(@MessageBody() text: string) {
+    return { reply: `you said: ${text}` };
+  }
+}
+
+const server = app.listen(3000);
+createWsApplication(server, [new ChatGateway()]);
+```
+
+The wire format is JSON in both directions: a client sends `{ event, data }`; if the matching handler returns something other than `undefined`, the same `event` name comes back with the handler's return value as `data`. Throw to send back `{ event: "error", data: { message } }` instead — nothing you throw ever kills the connection.
+
+- **Gateways are plain instances**, like `registerControllers` — resolve them from your DI container yourself first if they need injected dependencies. There's no decorator-driven constructor injection here.
+- **Multiple gateways share one HTTP server** via distinct `@WebSocketGateway(path)` values; `createWsApplication` installs exactly one `'upgrade'` listener on `server` and routes by path itself. (Attaching more than one `ws.WebSocketServer` directly to the same server with `{ server, path }` does **not** work safely — each instance's unconditional upgrade listener will abort a connection another instance already accepted. `createWsApplication` exists specifically so you don't have to know that.)
+- `@ConnectedSocket()` injects the raw `ws` socket; `@ConnectionRequest()` injects the upgrade `IncomingMessage` (for headers, query params, etc.).
+- No guards/interceptors integration yet — auth today means reading something off `@ConnectionRequest()` (a cookie, a query token) yourself inside the handler.
 
 ---
 
@@ -290,6 +335,20 @@ app.get("/openapi.json", (_req, res) => res.json(spec));
 ```
 
 Paths, methods, and path parameters are derived from your routes; `/users/:id` becomes `/users/{id}`. **Schemas are not inferred** — inferring them from TypeScript types would require `reflect-metadata`, which is exactly the dependency this package avoids. Supply `requestBody` and `responses` yourself, e.g. from `zod-to-json-schema`.
+
+### Swagger UI
+
+`toOpenApi` only gives you JSON. For an interactive page to browse and try requests against, add `swaggerUiHtml`:
+
+```ts
+import { swaggerUiHtml } from "@bharath2408/structex/openapi";
+
+app.get("/docs", (_req, res) =>
+  res.type("html").send(swaggerUiHtml({ specUrl: "/openapi.json", title: "My API" })),
+);
+```
+
+This loads Swagger UI from a CDN (`unpkg.com/swagger-ui-dist`) at request time rather than bundling `swagger-ui-express` and its assets as a dependency — in keeping with this package's zero-runtime-dependency design. It needs the browser to reach unpkg.com; if that's not acceptable for your deployment (offline environments, strict CSPs), vendor `swagger-ui-dist` yourself and serve your own HTML instead.
 
 ---
 
@@ -469,6 +528,37 @@ defineModule({
 
 ---
 
+## API versioning
+
+`@Version` prefixes matching routes with a version segment. A method-level `@Version` overrides the controller's for that route only — handy for moving one endpoint to a new version without bumping the whole controller.
+
+```ts
+import { Version } from "@bharath2408/structex";
+
+@Controller("/users")
+@Version("1")
+class UsersController {
+  @Get("/")
+  list() {}              // -> GET /v1/users
+
+  @Get("/beta")
+  @Version("2")
+  beta() {}               // -> GET /v2/users/beta
+}
+```
+
+The `v${version}` format is configurable — pass `versionPrefix` to `registerControllers`/`createApplication` (and to `toOpenApi`, so generated docs match):
+
+```ts
+registerControllers(app, controllers, {
+  versionPrefix: (v) => `version${v}`,   // -> /version1/users
+});
+```
+
+Unversioned controllers are unaffected; `@Version` only prefixes the routes that declare it.
+
+---
+
 ## Modules
 
 A module groups controllers and providers, and — the actual point — **encapsulates them**. Providers are private unless exported.
@@ -489,7 +579,7 @@ const UserModule = defineModule({
   providers: [UserService],     // private
   controllers: [UserController],
   prefix: "/users",             // optional, on top of @Controller's prefix
-  middleware: [rateLimit()],    // mounted at the module prefix
+  middleware: [helmet()],       // plain Express middleware, mounted at the module prefix
 });
 
 const AppModule = defineModule({
@@ -545,6 +635,7 @@ defineModule({
 | `@UseGuards(...guards)` | Guards for every route on the controller |
 | `@UseInterceptors(...interceptors)` | Interceptors for every route (outermost) |
 | `@ApiDoc({ tags })` | Default OpenAPI tags |
+| `@Version(v)` | Prefixes every route with `v${v}` (configurable) |
 
 ### Routes
 
@@ -562,6 +653,7 @@ defineModule({
 | `@UseGuards(...guards)` | Guards for this route, after class guards |
 | `@UseInterceptors(...i)` | Interceptors for this route |
 | `@ApiDoc(doc \| summary)` | OpenAPI enrichment for this operation |
+| `@Version(v)` | Overrides the controller's `@Version` for this route only |
 
 ### Parameters
 

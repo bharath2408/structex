@@ -533,13 +533,11 @@ export const errorHandler = createErrorHandler({
   internal messages never leak to a client in production, but
   `exposeStack: true` in development shows you what broke.
 
-## 7. Bonus: generate an OpenAPI spec
+## 7. Bonus: generate an OpenAPI spec, with a UI
 
 Routes, methods, and path parameters are derived automatically from your
 decorators — `/tasks/:id` becomes `/tasks/{id}` with no extra work. Add
-`@ApiDoc` where you want richer descriptions:
-
-Add `@ApiDoc` to `TasksController`:
+`@ApiDoc` to `TasksController` where you want richer descriptions:
 
 ```ts
 // src/tasks/tasks.controller.ts
@@ -562,8 +560,8 @@ Then generate the spec in `main.ts`, using the same `app` and `AppModule`
 already declared there:
 
 ```ts
-// src/main.ts — add these two lines after `printRoutes(application.routes);`
-import { toOpenApi } from "@bharath2408/structex/openapi";
+// src/main.ts — add after `printRoutes(application.routes);`
+import { toOpenApi, swaggerUiHtml } from "@bharath2408/structex/openapi";
 import { TasksController } from "./tasks/tasks.controller.js";
 
 const spec = toOpenApi([TasksController], {
@@ -571,7 +569,16 @@ const spec = toOpenApi([TasksController], {
   prefix: "/api",
 });
 app.get("/openapi.json", (_req, res) => res.json(spec));
+app.get("/docs", (_req, res) =>
+  res.type("html").send(swaggerUiHtml({ specUrl: "/openapi.json", title: "Tasks API" })),
+);
 ```
+
+Open <http://localhost:3000/docs> for an interactive Swagger UI page — browse
+every route, expand `GET /tasks/{id}`, and try a real request from the
+browser. `swaggerUiHtml` loads the UI from a CDN rather than adding
+`swagger-ui-express` as a dependency, matching this framework's
+zero-runtime-dependency design; it needs the browser to reach unpkg.com.
 
 **Response and request-body schemas are not inferred** — that would need
 `reflect-metadata`, the exact dependency this framework avoids. Supply

@@ -117,7 +117,15 @@ export interface RegisterOptions {
    * to turn it off entirely.
    */
   serialize?: boolean | { groups?: SerializeGroups };
+  /**
+   * Formats a `@Version` value into a path segment. Defaults to `v${version}`,
+   * so `@Version("1")` becomes `/v1`. Inserted after `prefix`, before the
+   * controller's own prefix.
+   */
+  versionPrefix?: (version: string) => string;
 }
+
+const defaultVersionPrefix = (version: string): string => `v${version}`;
 
 const defaultStatusFor = (method: HttpMethod): number =>
   method === "post" ? 201 : 200;
@@ -236,6 +244,7 @@ export function registerControllers(
     guards: globalGuards = [],
     interceptors: globalInterceptors = [],
     serialize: serializeOption = true,
+    versionPrefix = defaultVersionPrefix,
   } = options;
 
   const serializeEnabled = serializeOption !== false;
@@ -284,7 +293,13 @@ export function registerControllers(
         ...(meta.methodInterceptors.get(route.handlerName) ?? []),
       ];
 
-      const path = joinPaths(globalPrefix, meta.prefix, route.path);
+      const version = meta.methodVersions.get(route.handlerName) ?? meta.version;
+      const path = joinPaths(
+        globalPrefix,
+        version !== undefined ? versionPrefix(version) : "",
+        meta.prefix,
+        route.path,
+      );
       const key = `${controllerName}.${route.handlerName}:${route.method}:${path}`;
 
       if (detectDuplicates && seen.has(key)) {
@@ -428,9 +443,10 @@ export function registerControllers(
  */
 export function listRoutes(
   controllers: ControllerInput[],
-  options: Pick<RegisterOptions, "prefix"> = {},
+  options: Pick<RegisterOptions, "prefix" | "versionPrefix"> = {},
 ): RouteInfo[] {
   const routes: RouteInfo[] = [];
+  const versionPrefix = options.versionPrefix ?? defaultVersionPrefix;
 
   for (const input of controllers) {
     const meta = metaOf(input);
@@ -438,9 +454,15 @@ export function listRoutes(
     const controllerName = ctorOf(input).name;
 
     for (const route of meta.routes) {
+      const version = meta.methodVersions.get(route.handlerName) ?? meta.version;
       routes.push({
         method: route.method,
-        path: joinPaths(options.prefix ?? "", meta.prefix, route.path),
+        path: joinPaths(
+          options.prefix ?? "",
+          version !== undefined ? versionPrefix(version) : "",
+          meta.prefix,
+          route.path,
+        ),
         controller: controllerName,
         handler: route.handlerName,
         sse: Boolean(route.sse),

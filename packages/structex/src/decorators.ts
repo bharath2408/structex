@@ -34,6 +34,36 @@ export function Controller(
   };
 }
 
+/**
+ * Prefixes matching routes with a version segment: `@Version("1")` turns
+ * `/users` into `/v1/users` (the format is configurable via
+ * `RegisterOptions.versionPrefix`). On a method, overrides the controller's
+ * own `@Version` for that route only.
+ *
+ * ```ts
+ * @Controller("/users")
+ * @Version("1")
+ * class UsersController {
+ *   @Get("/") list() {}          // -> GET /v1/users
+ *
+ *   @Get("/beta")
+ *   @Version("2")
+ *   beta() {}                    // -> GET /v2/users/beta
+ * }
+ * ```
+ */
+export function Version(version: string | number): ClassDecorator & MethodDecorator {
+  return ((target: any, propertyKey?: string | symbol) => {
+    const v = String(version);
+    if (propertyKey === undefined) {
+      getMeta(target as Function).version = v;
+      return;
+    }
+    const meta = getMeta(target.constructor as Function);
+    meta.methodVersions.set(String(propertyKey), v);
+  }) as ClassDecorator & MethodDecorator;
+}
+
 /* ------------------------------------------------------------------ *
  * Routes
  * ------------------------------------------------------------------ */

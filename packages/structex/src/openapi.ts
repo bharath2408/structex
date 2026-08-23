@@ -14,7 +14,11 @@ export interface OpenApiOptions {
   prefix?: string;
   /** Merged into the generated document — the place for `components`. */
   extra?: Record<string, unknown>;
+  /** Formats a `@Version` value into a path segment. Must match `registerControllers`. */
+  versionPrefix?: (version: string) => string;
 }
+
+const defaultVersionPrefix = (version: string): string => `v${version}`;
 
 /** Converts `/users/:id` to `/users/{id}` and returns the parameter names. */
 export function toOpenApiPath(path: string): {
@@ -49,7 +53,13 @@ export function toOpenApi(
   controllers: ControllerInput[],
   options: OpenApiOptions,
 ): Record<string, unknown> {
-  const { info, servers, prefix = "", extra = {} } = options;
+  const {
+    info,
+    servers,
+    prefix = "",
+    extra = {},
+    versionPrefix = defaultVersionPrefix,
+  } = options;
   const paths: Record<string, Record<string, unknown>> = {};
 
   for (const input of controllers) {
@@ -61,7 +71,13 @@ export function toOpenApi(
     for (const route of meta.routes) {
       if (route.sse) continue; // not expressible as a JSON operation
 
-      const raw = joinPaths(prefix, meta.prefix, route.path);
+      const version = meta.methodVersions.get(route.handlerName) ?? meta.version;
+      const raw = joinPaths(
+        prefix,
+        version !== undefined ? versionPrefix(version) : "",
+        meta.prefix,
+        route.path,
+      );
       const { path, params } = toOpenApiPath(raw);
       const doc: ApiDocDefinition = meta.apiDocs.get(route.handlerName) ?? {};
 
@@ -103,4 +119,60 @@ export function toOpenApi(
     paths,
     ...extra,
   };
+}
+
+export interface SwaggerUiOptions {
+  /** URL the browser fetches the OpenAPI JSON from, e.g. "/openapi.json". */
+  specUrl: string;
+  /** Browser tab title. */
+  title?: string;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * A self-contained Swagger UI page for a spec built with `toOpenApi`. Loads
+ * the UI from a CDN rather than adding `swagger-ui-express` (and its bundled
+ * assets) as a dependency — in keeping with this package shipping zero
+ * runtime dependencies of its own.
+ *
+ * ```ts
+ * const spec = toOpenApi([UsersController], { info: { title: "API", version: "1.0.0" } });
+ * app.get("/openapi.json", (_req, res) => res.json(spec));
+ * app.get("/docs", (_req, res) => res.type("html").send(swaggerUiHtml({ specUrl: "/openapi.json" })));
+ * ```
+ *
+ * Requires network access to unpkg.com in the browser; there is no offline
+ * or self-hosted mode. Vendor `swagger-ui-dist` yourself if that is a
+ * problem for your deployment.
+ */
+export function swaggerUiHtml(options: SwaggerUiOptions | string): string {
+  const { specUrl, title = "API Docs" } =
+    typeof options === "string" ? { specUrl: options } : options;
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(title)}</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: ${JSON.stringify(specUrl)},
+        dom_id: "#swagger-ui",
+      });
+    </script>
+  </body>
+</html>
+`;
 }
