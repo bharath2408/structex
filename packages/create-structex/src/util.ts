@@ -5,9 +5,11 @@ import { dirname, join, relative, resolve } from "node:path";
  * Output
  * ------------------------------------------------------------------ */
 
-// Respect NO_COLOR and non-TTY output so piping stays clean.
+// Respect NO_COLOR; FORCE_COLOR opts back in when piped (e.g. through a
+// colorizing wrapper). NO_COLOR always wins.
 const useColor =
-  process.stdout.isTTY === true && !process.env.NO_COLOR;
+  !process.env.NO_COLOR &&
+  (process.stdout.isTTY === true || Boolean(process.env.FORCE_COLOR));
 
 const wrap = (code: string) => (text: string) =>
   useColor ? `\u001b[${code}m${text}\u001b[0m` : text;
@@ -18,6 +20,11 @@ export const green = wrap("32");
 export const yellow = wrap("33");
 export const cyan = wrap("36");
 export const red = wrap("31");
+export const magenta = wrap("35");
+export const blue = wrap("34");
+export const brightMagenta = wrap("95");
+export const brightCyan = wrap("96");
+export const gray = wrap("90");
 
 export function info(message: string): void {
   console.log(message);

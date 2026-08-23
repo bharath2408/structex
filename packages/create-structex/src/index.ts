@@ -13,7 +13,10 @@ import {
 import {
   CliError,
   assertValidName,
+  blue,
   bold,
+  brightCyan,
+  brightMagenta,
   cyan,
   dim,
   green,
@@ -24,9 +27,10 @@ import {
   toPascal,
   warn,
   writeFiles,
+  yellow,
 } from "./util.js";
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.2";
 /** Kept in step with the CLI's own major.minor. */
 const STRUCTEX_VERSION = "^0.5.0";
 
@@ -39,32 +43,32 @@ type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
 function printHelp(): void {
   info(`
-${bold("structex")} ${dim(`v${VERSION}`)} — structure for Express
+${brightMagenta("◆")} ${bold(brightCyan("structex"))} ${dim(`v${VERSION}`)} — structure for Express
 
-${bold("Create a project")}
+${bold(brightMagenta("Create a project"))}
   npx create-structex <directory> [options]
 
-  --template <name>   ${TEMPLATES.join(" | ")}   ${dim("(default: modules)")}
-  --pm <manager>      npm | pnpm | yarn | bun
-  --no-install        skip dependency installation
-  --no-git            skip git init
-  --force             write into a non-empty directory
+  ${cyan("--template <name>")}   ${TEMPLATES.join(" | ")}   ${dim("(default: modules)")}
+  ${cyan("--pm <manager>")}      npm | pnpm | yarn | bun
+  ${cyan("--no-install")}        skip dependency installation
+  ${cyan("--no-git")}            skip git init
+  ${cyan("--force")}             write into a non-empty directory
 
-${bold("Generate code")}
+${bold(brightMagenta("Generate code"))}
   npx structex generate <kind> <name> [options]
   npx structex g <kind> <name>
 
   kinds: ${GENERATOR_KINDS.join(", ")}
 
-  --dir <path>        target directory ${dim("(default: src/<name> in a module project)")}
-  --flat              write into --dir directly, no subfolder
-  --force             overwrite existing files
+  ${cyan("--dir <path>")}        target directory ${dim("(default: src/<name> in a module project)")}
+  ${cyan("--flat")}              write into --dir directly, no subfolder
+  ${cyan("--force")}             overwrite existing files
 
-${bold("Examples")}
-  ${cyan("npx create-structex my-api")}
-  ${cyan("npx create-structex my-api --template minimal --no-install")}
-  ${cyan("npx structex g resource orders")}
-  ${cyan("npx structex g guard admin --dir src/common --flat")}
+${bold(brightMagenta("Examples"))}
+  ${dim("$")} ${cyan("npx create-structex my-api")}
+  ${dim("$")} ${cyan("npx create-structex my-api --template minimal --no-install")}
+  ${dim("$")} ${cyan("npx structex g resource orders")}
+  ${dim("$")} ${cyan("npx structex g guard admin --dir src/common --flat")}
 `);
 }
 
@@ -83,7 +87,14 @@ function detectPackageManager(): PackageManager {
 
 function runInstall(cwd: string, manager: PackageManager): boolean {
   try {
-    execFileSync(manager, ["install"], { cwd, stdio: "inherit" });
+    // On Windows, npm/pnpm/yarn/bun are .cmd shims that execFileSync can't
+    // resolve without a shell — ENOENT otherwise, even though the same
+    // command works fine typed into any terminal.
+    execFileSync(manager, ["install"], {
+      cwd,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
     return true;
   } catch {
     warn(`${manager} install failed — run it yourself once the network is up.`);
@@ -142,11 +153,14 @@ export function runCreate(options: CreateOptions): void {
   const { written, skipped } = writeFiles(root, files, { force });
 
   info("");
-  success(`Created ${bold(toKebab(name))} ${dim(`(${template} template)`)}`);
-  for (const file of written) info(`  ${dim("+")} ${file}`);
+  info(
+    `${brightMagenta("◆")} ${bold(brightCyan(toKebab(name)))} ${dim(`— ${template} template`)}`,
+  );
+  info("");
+  for (const file of written) info(`  ${green("+")} ${file}`);
   for (const file of skipped) info(`  ${yellowSkip(file)}`);
 
-  if (git && initGit(root)) info(`\n  ${dim("initialized git repository")}`);
+  if (git && initGit(root)) info(`\n  ${blue("⎇")}  ${dim("initialized git repository")}`);
 
   let installed = false;
   if (install) {
@@ -156,17 +170,18 @@ export function runCreate(options: CreateOptions): void {
 
   const run = packageManager === "npm" ? "npm run" : packageManager;
   info(`
-${bold("Next steps")}
+${bold(brightMagenta("Next steps"))}
 
   ${cyan(`cd ${directory}`)}${installed ? "" : `\n  ${cyan(`${packageManager} install`)}`}
   ${cyan(`${run} dev`)}
 
-Then: ${dim("curl localhost:3000/api/users")}
+${dim("Then:")} ${bold("curl localhost:3000/api/users")}
 `);
+  success(`Ready — happy building with ${bold(brightCyan("structex"))}!`);
 }
 
 function yellowSkip(file: string): string {
-  return `${dim("·")} ${file} ${dim("(exists, skipped)")}`;
+  return `${yellow("·")} ${file} ${dim("(exists, skipped)")}`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -223,7 +238,7 @@ export function runGenerate(options: GenerateOptions): void {
   if (written.length === 0) {
     warn("Nothing written — every file already exists. Pass --force to overwrite.");
   } else {
-    success(`Generated ${bold(kind)} ${cyan(toPascal(name))}`);
+    success(`Generated ${bold(kind)} ${brightCyan(toPascal(name))}`);
   }
 
   const prefix = useSubfolder ? `${base}/${kebab}/` : `${base}/`;
@@ -269,7 +284,7 @@ function printWiringHint(kind: GeneratorKind, name: string): void {
     }
   })();
 
-  info(`\n${bold("Next")}\n  ${hint}\n`);
+  info(`\n${bold(brightMagenta("Next"))}\n  ${hint}\n`);
 }
 
 function lower(value: string): string {
