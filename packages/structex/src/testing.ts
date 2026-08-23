@@ -56,7 +56,7 @@ const defaultErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
  * ```ts
  * import express from "express";
  * import request from "supertest";
- * import { createTestApp } from "structex/testing";
+ * import { createTestApp } from "@bharath2408/structex/testing";
  *
  * const { app } = createTestApp([new UserController(fakeRepo)], {
  *   express,

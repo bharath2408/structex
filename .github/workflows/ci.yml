@@ -21,10 +21,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm install --no-save -w structex express@${{ matrix.express }}
-      - run: npm run typecheck -w structex
-      - run: npm test -w structex
-      - run: npm run build -w structex
+      - run: npm install --no-save -w packages/structex express@${{ matrix.express }}
+      - run: npm run typecheck -w packages/structex
+      - run: npm test -w packages/structex
+      - run: npm run build -w packages/structex
 
   cli:
     name: create-structex
@@ -36,9 +36,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck -w create-structex
-      - run: npm test -w create-structex
-      - run: npm run build -w create-structex
+      - run: npm run typecheck -w packages/create-structex
+      - run: npm test -w packages/create-structex
+      - run: npm run build -w packages/create-structex
 
   e2e:
     name: scaffold and run a generated project
@@ -52,7 +52,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: pack the library
-        run: npm pack -w structex --pack-destination /tmp
+        run: npm pack -w packages/structex --pack-destination /tmp
       - name: scaffold both templates and run their tests
         run: |
           for template in minimal modules; do
@@ -61,7 +61,7 @@ jobs:
             node $GITHUB_WORKSPACE/packages/create-structex/dist/index.js app \
               --template $template --no-install --no-git
             cd app
-            npm install /tmp/structex-*.tgz
+            npm install /tmp/bharath2408-structex-*.tgz
             npx tsc --noEmit
             npm test
           done

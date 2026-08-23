@@ -2,12 +2,16 @@
 
 CLI for [Structex](https://github.com/bharath2408/structex) — structure for Express, without leaving Express behind.
 
-No install needed; run it with `npx`.
+Published on GitHub Packages. Add this to your `.npmrc` once (GitHub Packages requires it for scope resolution, and a [GitHub token](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-npm-registry) with `read:packages` for auth, even for public packages):
+
+```
+@bharath2408:registry=https://npm.pkg.github.com
+```
 
 ## Create a project
 
 ```bash
-npx create-structex my-api
+npx @bharath2408/create-structex my-api
 ```
 
 | Option | Default | |

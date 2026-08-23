@@ -28,7 +28,7 @@ function packageJson({ name, structexVersion }: ScaffoldOptions): string {
       },
       dependencies: {
         express: "^5.1.0",
-        structex: structexVersion,
+        "@bharath2408/structex": structexVersion,
       },
       devDependencies: {
         "@types/express": "^5.0.0",
@@ -94,7 +94,7 @@ const ENV_EXAMPLE = `PORT=3000
 DATABASE_URL=postgres://localhost:5432/app
 `;
 
-const ERROR_HANDLER = `import { createErrorHandler } from "structex";
+const ERROR_HANDLER = `import { createErrorHandler } from "@bharath2408/structex";
 
 /**
  * Central error handler. Every handler, guard, and pipe that throws lands
@@ -113,7 +113,7 @@ export const errorHandler = createErrorHandler({
  * ------------------------------------------------------------------ */
 
 const MINIMAL_MAIN = `import express from "express";
-import { printRoutes, registerControllers } from "structex";
+import { printRoutes, registerControllers } from "@bharath2408/structex";
 
 import { errorHandler } from "./error-handler.js";
 import { HealthController } from "./health.controller.js";
@@ -138,7 +138,7 @@ const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => console.log(\`\\nlistening on http://localhost:\${port}\`));
 `;
 
-const MINIMAL_HEALTH = `import { Controller, Get } from "structex";
+const MINIMAL_HEALTH = `import { Controller, Get } from "@bharath2408/structex";
 
 @Controller("/health")
 export class HealthController {
@@ -159,8 +159,8 @@ const MINIMAL_USERS = `import {
   Param,
   Post,
   Query,
-} from "structex";
-import { clamp, required, toInt, trim } from "structex/pipes";
+} from "@bharath2408/structex";
+import { clamp, required, toInt, trim } from "@bharath2408/structex/pipes";
 
 export interface User {
   id: string;
@@ -218,7 +218,7 @@ export class UsersController {
 const MINIMAL_TEST = `import { describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createTestApp } from "structex/testing";
+import { createTestApp } from "@bharath2408/structex/testing";
 
 import { UsersController } from "../src/users.controller.js";
 
@@ -258,8 +258,8 @@ describe("UsersController", () => {
  * ------------------------------------------------------------------ */
 
 const MODULES_MAIN = `import express from "express";
-import { printRoutes } from "structex";
-import { createApplication } from "structex/di";
+import { printRoutes } from "@bharath2408/structex";
+import { createApplication } from "@bharath2408/structex/di";
 
 import { AppModule } from "./app.module.js";
 import { errorHandler } from "./error-handler.js";
@@ -289,7 +289,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 }
 `;
 
-const MODULES_APP_MODULE = `import { defineModule } from "structex/di";
+const MODULES_APP_MODULE = `import { defineModule } from "@bharath2408/structex/di";
 
 import { ConfigModule } from "./config/config.module.js";
 import { HealthModule } from "./health/health.module.js";
@@ -301,7 +301,7 @@ export const AppModule = defineModule({
 });
 `;
 
-const MODULES_CONFIG = `import { defineModule, token } from "structex/di";
+const MODULES_CONFIG = `import { defineModule, token } from "@bharath2408/structex/di";
 
 export interface AppConfig {
   databaseUrl: string;
@@ -327,8 +327,8 @@ export const ConfigModule = defineModule({
 });
 `;
 
-const MODULES_HEALTH = `import { Controller, Get } from "structex";
-import { defineModule } from "structex/di";
+const MODULES_HEALTH = `import { Controller, Get } from "@bharath2408/structex";
+import { defineModule } from "@bharath2408/structex/di";
 
 @Controller("/health")
 export class HealthController {
@@ -344,8 +344,8 @@ export const HealthModule = defineModule({
 });
 `;
 
-const MODULES_USERS_SERVICE = `import { NotFound } from "structex";
-import { Inject } from "structex/di";
+const MODULES_USERS_SERVICE = `import { NotFound } from "@bharath2408/structex";
+import { Inject } from "@bharath2408/structex/di";
 
 import { CONFIG, type AppConfig } from "../config/config.module.js";
 
@@ -398,9 +398,9 @@ const MODULES_USERS_CONTROLLER = `import {
   HttpCode,
   Param,
   Post,
-} from "structex";
-import { Inject } from "structex/di";
-import { required, trim } from "structex/pipes";
+} from "@bharath2408/structex";
+import { Inject } from "@bharath2408/structex/di";
+import { required, trim } from "@bharath2408/structex/pipes";
 
 import { UsersService } from "./users.service.js";
 
@@ -434,7 +434,7 @@ export class UsersController {
 }
 `;
 
-const MODULES_USERS_MODULE = `import { defineModule } from "structex/di";
+const MODULES_USERS_MODULE = `import { defineModule } from "@bharath2408/structex/di";
 
 import { ConfigModule } from "../config/config.module.js";
 import { UsersController } from "./users.controller.js";
@@ -453,7 +453,7 @@ export const UsersModule = defineModule({
 const MODULES_TEST = `import { describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createTestApp } from "structex/testing";
+import { createTestApp } from "@bharath2408/structex/testing";
 
 import { UsersController } from "../src/users/users.controller.js";
 import { UsersService } from "../src/users/users.service.js";
@@ -628,7 +628,7 @@ function controllerFile(name: string, withService: boolean): string {
   const camel = toCamel(name);
 
   if (!withService) {
-    return `import { Controller, Get, HttpCode, Param, Post, Body } from "structex";
+    return `import { Controller, Get, HttpCode, Param, Post, Body } from "@bharath2408/structex";
 
 @Controller("/${kebab}")
 export class ${Pascal}Controller {
@@ -653,8 +653,8 @@ export class ${Pascal}Controller {
 `;
   }
 
-  return `import { Body, Controller, Delete, Get, HttpCode, Param, Post } from "structex";
-import { Inject } from "structex/di";
+  return `import { Body, Controller, Delete, Get, HttpCode, Param, Post } from "@bharath2408/structex";
+import { Inject } from "@bharath2408/structex/di";
 
 import { ${Pascal}Service } from "./${kebab}.service.js";
 
@@ -689,7 +689,7 @@ export class ${Pascal}Controller {
 function serviceFile(name: string): string {
   const Pascal = toPascal(name);
 
-  return `import { NotFound } from "structex";
+  return `import { NotFound } from "@bharath2408/structex";
 
 export interface ${Pascal}Record {
   id: string;
@@ -728,7 +728,7 @@ function moduleFile(name: string, full: boolean): string {
   const kebab = toKebab(name);
 
   if (!full) {
-    return `import { defineModule } from "structex/di";
+    return `import { defineModule } from "@bharath2408/structex/di";
 
 export const ${Pascal}Module = defineModule({
   name: "${Pascal}Module",
@@ -740,7 +740,7 @@ export const ${Pascal}Module = defineModule({
 `;
   }
 
-  return `import { defineModule } from "structex/di";
+  return `import { defineModule } from "@bharath2408/structex/di";
 
 import { ${Pascal}Controller } from "./${kebab}.controller.js";
 import { ${Pascal}Service } from "./${kebab}.service.js";
@@ -757,8 +757,8 @@ export const ${Pascal}Module = defineModule({
 function guardFile(name: string): string {
   const camel = toCamel(name);
 
-  return `import { Forbidden, Unauthorized } from "structex";
-import type { Guard } from "structex";
+  return `import { Forbidden, Unauthorized } from "@bharath2408/structex";
+import type { Guard } from "@bharath2408/structex";
 
 /**
  * Return false for a plain 403, or throw for a specific status and message.
@@ -778,7 +778,7 @@ export const ${camel}Guard: Guard = (req) => {
 function interceptorFile(name: string): string {
   const camel = toCamel(name);
 
-  return `import type { Interceptor } from "structex/interceptors";
+  return `import type { Interceptor } from "@bharath2408/structex/interceptors";
 
 /**
  * Wraps parameter resolution and the handler call.
@@ -804,8 +804,8 @@ export const ${camel}Interceptor: Interceptor = async (ctx, next) => {
 function pipeFile(name: string): string {
   const camel = toCamel(name);
 
-  return `import { BadRequest } from "structex";
-import type { Pipe } from "structex/pipes";
+  return `import { BadRequest } from "@bharath2408/structex";
+import type { Pipe } from "@bharath2408/structex/pipes";
 
 /**
  * Transforms and validates one decorated argument. Throw to reject the

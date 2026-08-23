@@ -3,13 +3,15 @@
 **Structure for Express — without leaving Express behind.**
 
 ```bash
-npx create-structex my-api
+npx @bharath2408/create-structex my-api
 ```
+
+Published on GitHub Packages — add `@bharath2408:registry=https://npm.pkg.github.com` to your `.npmrc` and authenticate with a GitHub token (`read:packages` scope) before installing.
 
 | Package | Description |
 |---|---|
-| [`structex`](packages/structex) | The library. Controllers, DI, modules, interceptors, SSE, OpenAPI. Zero runtime dependencies. |
-| [`create-structex`](packages/create-structex) | The CLI. Scaffolds projects and generates code. |
+| [`@bharath2408/structex`](packages/structex) | The library. Controllers, DI, modules, interceptors, SSE, OpenAPI. Zero runtime dependencies. |
+| [`@bharath2408/create-structex`](packages/create-structex) | The CLI. Scaffolds projects and generates code. |
 
 ## Why not just NestJS?
 

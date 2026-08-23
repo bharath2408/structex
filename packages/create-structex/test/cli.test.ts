@@ -105,7 +105,7 @@ describe("project templates", () => {
     });
     const parsed = JSON.parse(files["package.json"]!);
     expect(parsed.name).toBe("my-api");
-    expect(parsed.dependencies.structex).toBe("^0.5.0");
+    expect(parsed.dependencies["@bharath2408/structex"]).toBe("^0.5.0");
     expect(parsed.dependencies.express).toBeDefined();
     expect(parsed.type).toBe("module");
   });
@@ -174,17 +174,17 @@ describe("generators", () => {
 
   it("imports from the right subpaths", () => {
     expect(buildGeneratorFiles("guard", "admin")["admin.guard.ts"]).toContain(
-      'from "structex"',
+      'from "@bharath2408/structex"',
     );
     expect(
       buildGeneratorFiles("pipe", "slug")["slug.pipe.ts"],
-    ).toContain('from "structex/pipes"');
+    ).toContain('from "@bharath2408/structex/pipes"');
     expect(
       buildGeneratorFiles("interceptor", "audit")["audit.interceptor.ts"],
-    ).toContain('from "structex/interceptors"');
+    ).toContain('from "@bharath2408/structex/interceptors"');
     expect(
       buildGeneratorFiles("service", "orders")["orders.service.ts"],
-    ).toContain('from "structex"');
+    ).toContain('from "@bharath2408/structex"');
   });
 });
 
@@ -239,7 +239,10 @@ describe("runGenerate", () => {
   beforeEach(() => {
     writeFileSync(
       join(workspace, "package.json"),
-      JSON.stringify({ name: "app", dependencies: { structex: "^0.5.0" } }),
+      JSON.stringify({
+        name: "app",
+        dependencies: { "@bharath2408/structex": "^0.5.0" },
+      }),
     );
   });
 
@@ -323,7 +326,7 @@ describe("main", () => {
   it("accepts the g alias", () => {
     writeFileSync(
       join(workspace, "package.json"),
-      JSON.stringify({ dependencies: { structex: "^0.5.0" } }),
+      JSON.stringify({ dependencies: { "@bharath2408/structex": "^0.5.0" } }),
     );
     expect(main(["g", "controller", "orders"])).toBe(0);
     expect(existsSync(join(workspace, "src/orders.controller.ts"))).toBe(true);

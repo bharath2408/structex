@@ -59,7 +59,7 @@ Note the different tenant in each response — that's a fresh controller built p
 
 ## 3. Scaffold an app with the CLI
 
-Neither package is on npm yet, so install from your local build rather than `npx create-structex`.
+Neither package is published yet, so install from your local build rather than `npx @bharath2408/create-structex`.
 
 ```cmd
 cd C:\dev\structex
@@ -76,7 +76,7 @@ npm run dev
 
 Then open <http://localhost:3000/api/users>.
 
-That second `npm install` pointing at the package folder is the step people miss. The generated `package.json` depends on `structex: ^0.5.0`, which does not exist on npm yet, so it has to come from your local copy.
+That second `npm install` pointing at the package folder is the step people miss. The generated `package.json` depends on `@bharath2408/structex: ^0.5.0`, which does not exist on the registry yet, so it has to come from your local copy.
 
 ### Templates
 
@@ -144,16 +144,23 @@ structex/
 
 ## When you publish
 
-1. Fill in the `your-user` placeholders in both `package.json` files and in `README.md`.
-2. Confirm the names are still free: <https://www.npmjs.com/package/structex>
-3. Publish **`structex` first, then `create-structex`.** The CLI's templates pin `structex@^0.5.0`, so the CLI generates broken projects until the library exists on npm.
+Both packages are scoped (`@bharath2408/structex`, `@bharath2408/create-structex`) and configured via `publishConfig.registry` to publish to **GitHub Packages**, not npmjs.org.
+
+1. Create a GitHub personal access token with `write:packages` (and `read:packages`) scope.
+2. Authenticate npm against GitHub Packages, e.g. add to `~/.npmrc`:
+   ```
+   //npm.pkg.github.com/:_authToken=YOUR_TOKEN
+   ```
+3. Publish **`structex` first, then `create-structex`.** The CLI's templates pin `@bharath2408/structex@^0.5.0`, so the CLI generates broken projects until the library exists on the registry.
 
 ```bash
-npm publish -w structex
-npm publish -w create-structex
+npm publish -w @bharath2408/structex
+npm publish -w @bharath2408/create-structex
 ```
 
 `prepublishOnly` runs typecheck, tests, and build automatically for both.
+
+Note: GitHub Packages requires a GitHub token to *install* these too, even though they're public — there's no truly anonymous `npx @bharath2408/create-structex` the way there is with npmjs.org.
 
 ---
 

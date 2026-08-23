@@ -5,9 +5,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w structex && npm run build -w create-structex",
-    "typecheck": "npm run typecheck -w structex && npm run typecheck -w create-structex",
-    "test": "npm run test -w structex && npm run test -w create-structex",
+    "build": "npm run build -w packages/structex && npm run build -w packages/create-structex",
+    "typecheck": "npm run typecheck -w packages/structex && npm run typecheck -w packages/create-structex",
+    "test": "npm run test -w packages/structex && npm run test -w packages/create-structex",
     "verify": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {

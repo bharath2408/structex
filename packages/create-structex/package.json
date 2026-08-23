@@ -1,6 +1,9 @@
 {
-  "name": "create-structex",
+  "name": "@bharath2408/create-structex",
   "version": "0.5.0",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "description": "Scaffold and generate Structex applications. Run with npx, no install required.",
   "type": "module",
   "bin": {

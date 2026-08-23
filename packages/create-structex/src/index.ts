@@ -191,7 +191,8 @@ function looksLikeProject(cwd: string): boolean {
       devDependencies?: Record<string, string>;
     };
     return Boolean(
-      parsed.dependencies?.structex ?? parsed.devDependencies?.structex,
+      parsed.dependencies?.["@bharath2408/structex"] ??
+        parsed.devDependencies?.["@bharath2408/structex"],
     );
   } catch {
     return false;
@@ -205,7 +206,7 @@ export function runGenerate(options: GenerateOptions): void {
   const cwd = process.cwd();
   if (!looksLikeProject(cwd)) {
     warn(
-      "No structex dependency found in package.json — generating anyway, but check you are in the right directory.",
+      "No @bharath2408/structex dependency found in package.json — generating anyway, but check you are in the right directory.",
     );
   }
 

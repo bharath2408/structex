@@ -16,7 +16,7 @@ npx create-structex my-api
 ## Install
 
 ```bash
-npm install structex express
+npm install @bharath2408/structex express
 ```
 
 `express` is a peer dependency (`^4.18.0 || ^5.0.0`), so you keep exactly one copy.
@@ -25,13 +25,13 @@ npm install structex express
 
 | Import | Contains |
 |---|---|
-| `structex` | Everything — decorators, routing, errors, responses |
-| `structex/di` | `token`, `Inject`, `Container`, `defineModule`, `createApplication` |
-| `structex/pipes` | `toInt`, `trim`, `required`, `parseWith`, … |
-| `structex/interceptors` | `timing`, `timeout`, `cache`, `retry`, `envelope` |
-| `structex/openapi` | `toOpenApi`, `toOpenApiPath` |
-| `structex/serialization` | `Exclude`, `Expose`, `Transform`, `serialize` |
-| `structex/testing` | `createTestApp` |
+| `@bharath2408/structex` | Everything — decorators, routing, errors, responses |
+| `@bharath2408/structex/di` | `token`, `Inject`, `Container`, `defineModule`, `createApplication` |
+| `@bharath2408/structex/pipes` | `toInt`, `trim`, `required`, `parseWith`, … |
+| `@bharath2408/structex/interceptors` | `timing`, `timeout`, `cache`, `retry`, `envelope` |
+| `@bharath2408/structex/openapi` | `toOpenApi`, `toOpenApiPath` |
+| `@bharath2408/structex/serialization` | `Exclude`, `Expose`, `Transform`, `serialize` |
+| `@bharath2408/structex/testing` | `createTestApp` |
 
 Subpaths are curated subsets of the root export, not separate bundles — so there is exactly one metadata store no matter which paths you import from.
 
@@ -82,7 +82,7 @@ import {
   registerControllers, printRoutes,
   NotFound, isHttpError,
   toInt, clamp, type Guard,
-} from "structex";
+} from "@bharath2408/structex";
 
 const authenticated: Guard = (req) => Boolean((req as any).user);
 
@@ -153,7 +153,7 @@ app.listen(3000);
 ### Dynamic status without `@Res()`
 
 ```ts
-import { respond } from "structex";
+import { respond } from "@bharath2408/structex";
 
 @Put("/:id")
 upsert(@Param("id") id: string, @Body() dto: Dto) {
@@ -184,8 +184,8 @@ Returning `undefined` from `transform` sends the status with an empty body.
 An interceptor wraps parameter resolution *and* the handler call. Class interceptors are outermost, then method interceptors, in declaration order.
 
 ```ts
-import { UseInterceptors } from "structex";
-import { timing, cache, timeout, retry, type Interceptor } from "structex/interceptors";
+import { UseInterceptors } from "@bharath2408/structex";
+import { timing, cache, timeout, retry, type Interceptor } from "@bharath2408/structex/interceptors";
 
 const correlate: Interceptor = async (ctx, next) => {
   ctx.res.set("X-Request-Id", ctx.req.header("x-request-id") ?? crypto.randomUUID());
@@ -214,7 +214,7 @@ Caveats worth knowing: `cache` is per-process and not shared across workers, so 
 ## Server-sent events
 
 ```ts
-import { Sse, type SseEvent } from "structex";
+import { Sse, type SseEvent } from "@bharath2408/structex";
 
 @Controller("/live")
 class LiveController {
@@ -234,7 +234,7 @@ Headers, framing, and stream teardown on client disconnect are handled for you. 
 ## Per-request instances
 
 ```ts
-import { scoped } from "structex";
+import { scoped } from "@bharath2408/structex";
 
 registerControllers(app, [
   new UserController(db),                                  // singleton
@@ -254,7 +254,7 @@ This is the extent of the DI story: explicit factories, no container, no decorat
 ```ts
 import express from "express";
 import request from "supertest";
-import { createTestApp } from "structex/testing";
+import { createTestApp } from "@bharath2408/structex/testing";
 
 const { app } = createTestApp([new UserController(fakeRepo)], {
   express,                          // passed in, so no second Express copy
@@ -271,8 +271,8 @@ JSON parsing and a default error handler are included; override either through t
 ## OpenAPI
 
 ```ts
-import { ApiDoc } from "structex";
-import { toOpenApi } from "structex/openapi";
+import { ApiDoc } from "@bharath2408/structex";
+import { toOpenApi } from "@bharath2408/structex/openapi";
 
 @Controller("/users")
 @ApiDoc({ tags: ["Users"] })
@@ -306,7 +306,7 @@ omission becomes the default instead of something you must remember at each
 call site.
 
 ```ts
-import { Exclude, Expose, Transform } from "structex/serialization";
+import { Exclude, Expose, Transform } from "@bharath2408/structex/serialization";
 
 class User {
   id!: string;
@@ -350,7 +350,7 @@ Order in the response path: handler → serialize → `transform` → JSON.
 ## Error handling
 
 ```ts
-import { createErrorHandler } from "structex";
+import { createErrorHandler } from "@bharath2408/structex";
 
 app.use(createErrorHandler());          // mount after your routes
 ```
@@ -376,7 +376,7 @@ Opt-in. `registerControllers` with plain instances stays fully supported — rea
 Dependencies are declared with `@Inject`, because without `reflect-metadata` there is no type information to infer from. That's the deliberate trade for zero dependencies: slightly more typing, no magic.
 
 ```ts
-import { Inject, token, Container } from "structex/di";
+import { Inject, token, Container } from "@bharath2408/structex/di";
 
 const CONFIG = token<Config>("CONFIG");
 
@@ -424,7 +424,7 @@ Database                                              // shorthand: class as its
 ### Optional and deferred dependencies
 
 ```ts
-import { optional, forwardRef } from "structex/di";
+import { optional, forwardRef } from "@bharath2408/structex/di";
 
 // undefined instead of throwing when nothing provides LOGGER
 { provide: SERVICE, useFactory: (log) => ..., inject: [optional(LOGGER)] }
@@ -474,7 +474,7 @@ defineModule({
 A module groups controllers and providers, and — the actual point — **encapsulates them**. Providers are private unless exported.
 
 ```ts
-import { defineModule, createApplication } from "structex/di";
+import { defineModule, createApplication } from "@bharath2408/structex/di";
 
 const DatabaseModule = defineModule({
   name: "DatabaseModule",
@@ -586,8 +586,8 @@ Every source decorator also accepts pipes: `@Query("page", toInt, clamp(1, 100))
 
 ```ts
 import { z } from "zod";
-import { Body } from "structex";
-import { parseWith } from "structex/pipes";
+import { Body } from "@bharath2408/structex";
+import { parseWith } from "@bharath2408/structex/pipes";
 
 const CreateUser = z.object({ email: z.string().email(), name: z.string().min(1) });
 type CreateUserDto = z.infer<typeof CreateUser>;
@@ -628,7 +628,7 @@ respond(body, { status?, headers? }): ResponseEnvelope
 Parameter decorators are the main extension point:
 
 ```ts
-import { createParamDecorator, Unauthorized } from "structex";
+import { createParamDecorator, Unauthorized } from "@bharath2408/structex";
 
 export const CurrentUser = () =>
   createParamDecorator((req) => {
