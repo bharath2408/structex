@@ -1,6 +1,6 @@
 # create-structex
 
-CLI for [Structex](https://github.com/your-user/structex) — structure for Express, without leaving Express behind.
+CLI for [Structex](https://github.com/bharath2408/structex) — structure for Express, without leaving Express behind.
 
 No install needed; run it with `npx`.
 

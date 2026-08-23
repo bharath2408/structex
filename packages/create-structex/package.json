@@ -4,8 +4,8 @@
   "description": "Scaffold and generate Structex applications. Run with npx, no install required.",
   "type": "module",
   "bin": {
-    "create-structex": "./dist/index.js",
-    "structex": "./dist/index.js"
+    "create-structex": "dist/index.js",
+    "structex": "dist/index.js"
   },
   "files": [
     "dist",
@@ -38,7 +38,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-user/structex.git",
+    "url": "git+https://github.com/bharath2408/structex.git",
     "directory": "packages/create-structex"
-  }
+  },
+  "homepage": "https://github.com/bharath2408/structex#readme"
 }

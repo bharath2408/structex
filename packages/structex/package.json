@@ -88,8 +88,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-user/structex.git",
+    "url": "git+https://github.com/bharath2408/structex.git",
     "directory": "packages/structex"
   },
-  "homepage": "https://github.com/your-user/structex#readme"
+  "homepage": "https://github.com/bharath2408/structex#readme"
 }

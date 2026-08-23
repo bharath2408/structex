@@ -494,7 +494,7 @@ function readme(options: ScaffoldOptions): string {
 
   return `# ${name}
 
-Built with [Structex](https://github.com/your-user/structex) — structure for Express, without leaving Express behind.
+Built with [Structex](https://github.com/bharath2408/structex) — structure for Express, without leaving Express behind.
 
 ## Scripts
 
